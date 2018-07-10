@@ -1,76 +1,117 @@
 package com.ozturkburak.mapconquer.utils;
 
 import android.content.Context;
-import android.graphics.Color;
-import android.support.v4.graphics.ColorUtils;
-import android.widget.Toast;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 
-import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
-import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
-import com.google.android.gms.maps.model.TileOverlayOptions;
-import com.google.android.gms.maps.model.TileProvider;
-import com.ozturkburak.mapconquer.MapsActivity;
-import com.ozturkburak.mapconquer.model.CountryInfo;
+import com.google.maps.android.SphericalUtil;
+import com.ozturkburak.mapconquer.model.geojson.CountryInfo;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.List;
-import java.util.Random;
 
 public class GoogleMapsUtils
 {
 
-    private static LatLngBounds getPolygonBounds(List<LatLng> polygonPointsList)
+    public static LatLngBounds CalculatePolygonBounds(List<PolygonOptions> polygonOptionsList)
     {
         LatLngBounds.Builder builder = new LatLngBounds.Builder();
-        for(LatLng latLng : polygonPointsList)
-            builder.include(latLng);
+        for(PolygonOptions polygonOptions : polygonOptionsList)
+        {
+            for (LatLng latLng : polygonOptions.getPoints())
+                builder.include(latLng);
+        }
 
         return builder.build();
     }
 
-    public static void AddCountryOnMap(final Context context, GoogleMap mMap, CountryInfo country)
+
+    public static void AddCountriesOnMap(final Context context, final GoogleMap mMap,final List<CountryInfo> countries)
     {
-        for (int i = 0 ; i <country.getArea().size() ; i++)
+        for (CountryInfo country:countries)
         {
-            PolygonOptions polygonOptions = country.getArea().get(i);
+            for (int i = 0; i <country.getPolygonOptions().size() ; i++)
+            {
+                if (country.getColor() == 0)
+                    country.setColor(Utils.getMatColor(context,"300"));
+
+                PolygonOptions polygonOptions = country.getPolygonOptions().get(i);
+                Polygon polygon = mMap.addPolygon(polygonOptions);
+                polygon.setTag(country);
+                polygon.setClickable(true);
+                polygon.setStrokeWidth(0.1f);
+//                polygon.setFillColor(country.getColor());
+                country.getPolygons().add(polygon);
+            }
+        }
+    }
+
+    public static void AddCountryOnMap(final Context context, final GoogleMap mMap,final CountryInfo country)
+    {
+
+        for (int i = 0; i <country.getPolygonOptions().size() ; i++)
+        {
+            if (country.getColor() == 0)
+             country.setColor(Utils.getMatColor(context,"300"));
+
+            PolygonOptions polygonOptions = country.getPolygonOptions().get(i);
             Polygon polygon = mMap.addPolygon(polygonOptions);
             polygon.setTag(country);
             polygon.setClickable(true);
             polygon.setStrokeWidth(0.1f);
-            polygon.setFillColor(Utils.getMatColor(context , "100"));
-            polygon.setGeodesic(true);
-            polygon.setZIndex(3);
+            polygon.setFillColor(country.getColor());
+            country.getPolygons().add(polygon);
 
-            if (country.getBigArea() == null)
-                country.setBigArea(polygon);
-            else
-                {
-                if (polygon.getPoints().size() > country.getBigArea().getPoints().size())
-                    country.setBigArea(polygon);
-            }
+
+        }
+    }
+
+
+
+
+
+
+    private static double calculateCountryArea(CountryInfo country)
+    {
+        if (country.getCalculatedArea() == 0)
+        {
+            double result = 0d;
+            for (Polygon polygon :country.getPolygons())
+                result += SphericalUtil.computeArea(polygon.getPoints());
+
+            country.setCalculatedArea(result);
         }
 
+        return country.getCalculatedArea();
+    }
 
-//            LatLngBounds bounds =getPolygonBounds(country.getBigArea().getPoints());
-//            MarkerOptions markerOptions = new MarkerOptions();
-//            markerOptions.position(bounds.getCenter()).title(country.getName());
-//
-//            mMap.addMarker(markerOptions);
-//            mMap.animateCamera(CameraUpdateFactory.newLatLng(bounds.getCenter()));
+    public static CountryInfo GetMax(CountryInfo country1, CountryInfo country2)
+    {
+        if (calculateCountryArea(country1) > calculateCountryArea(country2))
+            return  country1;
+        else
+            return country2;
+    }
 
-            mMap.setOnPolygonClickListener(new GoogleMap.OnPolygonClickListener()
-            {
-                @Override
-                public void onPolygonClick(Polygon polygon) {
-                    CountryInfo countryInfo = (CountryInfo) polygon.getTag();
-                    Toast.makeText(context , countryInfo.getName(), Toast.LENGTH_SHORT).show();
-                }
-            });
 
+    public static double  getCoefficient(CountryInfo country1 , CountryInfo country2)
+    {
+        BigDecimal country1Area = BigDecimal.valueOf(calculateCountryArea(country1));
+        BigDecimal country2Area = BigDecimal.valueOf(calculateCountryArea(country2));
+
+        BigDecimal min = country1Area.min(country2Area);
+        BigDecimal max = country1Area.max(country2Area);
+        if (max == country1Area)
+            return 1f;
+
+        return max.divide(min,MathContext.DECIMAL32).doubleValue();
     }
 
 

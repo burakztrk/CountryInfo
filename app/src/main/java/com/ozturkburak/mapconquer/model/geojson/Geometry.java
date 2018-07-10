@@ -1,5 +1,5 @@
 
-package com.ozturkburak.mapconquer.model;
+package com.ozturkburak.mapconquer.model.geojson;
 
 
 import com.google.gson.annotations.Expose;

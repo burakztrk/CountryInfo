@@ -6,16 +6,17 @@ package com.ozturkburak.mapconquer.utils;
 
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.PolygonOptions;
-import com.ozturkburak.mapconquer.model.CountryInfo;
-import com.ozturkburak.mapconquer.model.newmodel.Feature;
+import com.ozturkburak.mapconquer.model.geojson.CountryInfo;
+import com.ozturkburak.mapconquer.model.geojson.Feature;
+import com.ozturkburak.mapconquer.model.geojson.GeoJsonInfo;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class CountryParser
 {
-    com.ozturkburak.mapconquer.model.newmodel.GeoJsonInfo mGeoJsonInfo;
-    public CountryParser(com.ozturkburak.mapconquer.model.newmodel.GeoJsonInfo geoJsonInfo)
+    GeoJsonInfo mGeoJsonInfo;
+    public CountryParser(GeoJsonInfo geoJsonInfo)
     {
         mGeoJsonInfo = geoJsonInfo;
     }
@@ -38,7 +39,8 @@ public class CountryParser
                     {
                         PolygonOptions polygonOptions = new PolygonOptions();
                         polygonOptions.clickable(true);
-                        countryInfo.getArea().add(polygonOptions);
+
+                        countryInfo.getPolygonOptions().add(polygonOptions);
                         if (listlistlist.get(0) != null && !listlistlist.get(0).isEmpty())
                         {
 

@@ -1,6 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
+    dataBinding {
+                enabled = true
+            }
+
     compileSdkVersion 28
     defaultConfig {
         applicationId "com.ozturkburak.mapconquer"
@@ -27,6 +31,10 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 
+    //MapUtils
+    implementation 'com.google.maps.android:android-maps-utils:0.4.4'
+
+
     implementation 'com.squareup.retrofit2:retrofit:2.4.0'
     implementation 'com.google.code.gson:gson:2.8.2'
     implementation 'com.squareup.retrofit2:converter-gson:2.3.0'
@@ -34,6 +42,15 @@ dependencies {
     implementation 'io.reactivex:rxjava:1.1.6'
     implementation 'io.reactivex:rxandroid:1.2.1'
     implementation 'com.squareup.retrofit2:adapter-rxjava:2.1.0'
-    implementation'org.apache.commons:commons-lang3:3.6'
     compileOnly 'org.glassfish:javax.annotation:10.0-b28'
+
+    //Cardview country info
+    implementation 'com.android.support:cardview-v7:28.0.0-alpha3'
+
+    implementation 'com.github.bumptech.glide:glide:4.7.1'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.7.1'
+    // https://mvnrepository.com/artifact/com.caverock/androidsvg
+    implementation group: 'com.caverock', name: 'androidsvg', version: '1.2.1'
+
+    implementation 'com.android.support:recyclerview-v7:28.0.0-alpha3'
 }
