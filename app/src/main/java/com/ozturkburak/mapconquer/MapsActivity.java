@@ -2,37 +2,33 @@ package com.ozturkburak.mapconquer;
 
 
 import android.databinding.DataBindingUtil;
-import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ProgressBar;
 
-
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-
-
 import com.ozturkburak.mapconquer.databinding.ActivityMapsBinding;
 import com.ozturkburak.mapconquer.model.BindCountryData;
 import com.ozturkburak.mapconquer.utils.CommonVariables;
 import com.ozturkburak.mapconquer.utils.OnSwipeTouchListener;
 
 import java.util.ArrayList;
-import java.util.List;
 
 public class MapsActivity extends FragmentActivity implements  OnMapReadyCallback
 {
     private View infoView;
     private ProgressBar progressBar ;
     private MapManager mapManager;
-    private BindCountryData countryData ;
     private boolean infoViewFullShowed;
 
     private RecyclerView listView;
+    private ActivityMapsBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -40,9 +36,7 @@ public class MapsActivity extends FragmentActivity implements  OnMapReadyCallbac
         super.onCreate(savedInstanceState);
 //        setContentView(R.layout.activity_maps);
 
-        ActivityMapsBinding binding = DataBindingUtil.setContentView(this , R.layout.activity_maps);
-        countryData = new BindCountryData();
-        binding.setCountryInfo(countryData);
+        binding = DataBindingUtil.setContentView(this , R.layout.activity_maps);
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
@@ -90,15 +84,17 @@ public class MapsActivity extends FragmentActivity implements  OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap)
     {
-        mapManager = new MapManager(this , googleMap , countryData);
+        mapManager = new MapManager(this , googleMap);
         mapManager.drawCountryArea();
     }
+
 
     public void showProgressDialog()
     {
         if (progressBar!=null)
             progressBar.setVisibility(View.VISIBLE);
     }
+
 
 
     public void hideProgressDialog()
@@ -108,12 +104,6 @@ public class MapsActivity extends FragmentActivity implements  OnMapReadyCallbac
     }
 
 
-    public void borderAdapterDataChanged(List<String> borders)
-    {
-        BorderAdapter adapter = new BorderAdapter(this, borders);
-        listView.setAdapter(adapter);
-        adapter.notifyDataSetChanged();
-    }
 
 
 
@@ -153,5 +143,13 @@ public class MapsActivity extends FragmentActivity implements  OnMapReadyCallbac
 
     public void setInfoViewFullShowed(boolean infoViewFullShowed) {
         this.infoViewFullShowed = infoViewFullShowed;
+    }
+
+    public void updateBindingData(BindCountryData countryData)
+    {
+        binding.setCountryInfo(countryData);
+        BorderAdapter adapter = new BorderAdapter(this, countryData.getBorders());
+        listView.setAdapter(adapter);
+        adapter.notifyDataSetChanged();
     }
 }

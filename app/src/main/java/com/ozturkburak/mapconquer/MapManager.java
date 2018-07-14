@@ -1,17 +1,10 @@
 package com.ozturkburak.mapconquer;
 
-import android.content.Context;
 import android.graphics.Color;
-import android.graphics.drawable.PictureDrawable;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
-import android.view.View;
 
-
-import com.bumptech.glide.RequestBuilder;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.CameraPosition;
@@ -23,11 +16,11 @@ import com.ozturkburak.mapconquer.model.geojson.CountryInfo;
 import com.ozturkburak.mapconquer.model.geojson.GeoJsonInfo;
 import com.ozturkburak.mapconquer.model.restcountries.RestCountriesResponse;
 import com.ozturkburak.mapconquer.net.ApiUtils;
-import com.ozturkburak.mapconquer.utils.CommonVariables;
 import com.ozturkburak.mapconquer.utils.CountryParser;
 import com.ozturkburak.mapconquer.utils.GoogleMapsUtils;
 import com.ozturkburak.mapconquer.utils.StreamUtils;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -42,9 +35,9 @@ class MapManager extends AsyncTask<Void , Void , List<CountryInfo>>
         implements GoogleMap.OnPolygonClickListener,
         GoogleMap.OnCameraIdleListener
 {
-    private Context context;
+    private WeakReference<MapsActivity> activityWeakReference;
     private GoogleMap googleMap;
-    private BindCountryData bindCountryData;
+
 
     private List<CountryInfo> countries;
     private List<CountryInfo> showedCountries;
@@ -52,12 +45,13 @@ class MapManager extends AsyncTask<Void , Void , List<CountryInfo>>
     private CountryInfo beforeSelectedCountry;
 
 
-    public MapManager(Context context, GoogleMap map, BindCountryData bindCountryData) {
-        this.context = context;
-        this.googleMap = map;
-        this.bindCountryData = bindCountryData;
+    MapManager(MapsActivity context, GoogleMap map)
+    {
+        activityWeakReference = new WeakReference<>(context);
 
-        showedCountries = new ArrayList<>();
+        this.googleMap = map;
+
+        this.showedCountries = new ArrayList<>();
         this.googleMap.setMaxZoomPreference(5f);
         this.googleMap.setOnCameraIdleListener(this);
         this.googleMap.setOnPolygonClickListener(this);
@@ -66,23 +60,28 @@ class MapManager extends AsyncTask<Void , Void , List<CountryInfo>>
     }
 
 
-
     public void drawCountryArea() {
-        ((MapsActivity)context).showProgressDialog();
+        MapsActivity activity = activityWeakReference.get();
+        if (activity == null || activity.isFinishing())
+            return;
+
+        activity.showProgressDialog();
         this.execute();
     }
 
 
 
     @Override
-    public void onCameraIdle()
-    {
-        refreshMapView();
-    }
+    public void onCameraIdle() { refreshMapView(); }
 
 
-    public void refreshMapView()
+    private void refreshMapView()
     {
+        MapsActivity activity = activityWeakReference.get();
+        if (activity == null || activity.isFinishing())
+            return;
+
+
         if (this.countries ==null)
             return;
 
@@ -98,11 +97,10 @@ class MapManager extends AsyncTask<Void , Void , List<CountryInfo>>
 
         googleMap.clear();
         if (selectedCountry != null) {
-            GoogleMapsUtils.AddCountryOnMap(context , googleMap , selectedCountry);
+            GoogleMapsUtils.AddCountryOnMap(activity , googleMap , selectedCountry);
         }
 
-        GoogleMapsUtils.AddCountriesOnMap(context , googleMap , showedCountries);
-
+        GoogleMapsUtils.AddCountriesOnMap(activity , googleMap , showedCountries);
 
     }
 
@@ -112,6 +110,9 @@ class MapManager extends AsyncTask<Void , Void , List<CountryInfo>>
     @Override
     public void onPolygonClick(Polygon polygon) {
 
+        MapsActivity activity = activityWeakReference.get();
+        if (activity == null || activity.isFinishing())
+            return;
 
         this.selectedCountry = (CountryInfo) polygon.getTag();
         this.beforeSelectedCountry = selectedCountry;
@@ -119,7 +120,7 @@ class MapManager extends AsyncTask<Void , Void , List<CountryInfo>>
         //secilen ulkenin isaretlenmesi
         for (Polygon selectedPolygon : selectedCountry.getPolygons())
         {
-            selectedPolygon.setFillColor(ContextCompat.getColor(context , R.color.selectedCountryColor));
+            selectedPolygon.setFillColor(ContextCompat.getColor(activity, R.color.selectedCountryColor));
             selectedPolygon.setGeodesic(true);
             selectedPolygon.setStrokeWidth(10);
             selectedPolygon.setStrokeColor(selectedCountry.getColor());
@@ -135,10 +136,14 @@ class MapManager extends AsyncTask<Void , Void , List<CountryInfo>>
     }
 
 
-    private void showInfoView(final CountryInfo selectedCountry) {
+    private void showInfoView(final CountryInfo selectedCountry)
+    {
+        MapsActivity activity = activityWeakReference.get();
+        if (activity == null || activity.isFinishing())
+            return;
 
-        if(!((MapsActivity)context).isInfoViewFullShowed())
-            ((MapsActivity)context).minimizeInfoView();
+        if(!activity.isInfoViewFullShowed())
+            activity.minimizeInfoView();
 
 
 
@@ -146,6 +151,10 @@ class MapManager extends AsyncTask<Void , Void , List<CountryInfo>>
         restCountriesService.enqueue(new Callback<RestCountriesResponse>() {
             @Override
             public void onResponse(@NonNull Call<RestCountriesResponse> call, @NonNull Response<RestCountriesResponse> response) {
+                MapsActivity activity = activityWeakReference.get();
+                if (activity == null || activity.isFinishing())
+                    return;
+
                 if (response.body() != null)
                 {
                     RestCountriesResponse restCountriesResponse = response.body();
@@ -163,20 +172,21 @@ class MapManager extends AsyncTask<Void , Void , List<CountryInfo>>
                     if (restCountriesResponse.getCurrencies() !=null && !restCountriesResponse.getCurrencies().isEmpty())
                         currencies =String.format("%s/%s" ,restCountriesResponse.getCurrencies().get(0).getName() , restCountriesResponse.getCurrencies().get(0).getCode());
 
+                    BindCountryData newBindCountryData = new BindCountryData();
+                    newBindCountryData.setFlagUrl(restCountriesResponse.getFlag());
+                    newBindCountryData.setCountryName(String.format("%s (%s)", restCountriesResponse.getName() , restCountriesResponse.getNativeName()));
+                    newBindCountryData.setCapitalName(restCountriesResponse.getCapital());
+                    newBindCountryData.setSpelling(speeling);
+                    newBindCountryData.setRegion(restCountriesResponse.getRegion());
+                    newBindCountryData.setPopulation(String.format(Locale.getDefault() ,"%.2fM", restCountriesResponse.getPopulation()/ 1000000.0));
+                    newBindCountryData.setArea(String.format(Locale.getDefault() ,"%.2fM Km2", restCountriesResponse.getArea()/ 100000.0));
+                    newBindCountryData.setCurrency(currencies);
+                    newBindCountryData.setBorders(restCountriesResponse.getBorders());
 
-                    bindCountryData.setFlagUrl(restCountriesResponse.getFlag());
-                    bindCountryData.setCountryName(String.format("%s (%s)", restCountriesResponse.getName() , restCountriesResponse.getNativeName()));
-                    bindCountryData.setCapitalName(restCountriesResponse.getCapital());
-                    bindCountryData.setSpelling(speeling);
-                    bindCountryData.setRegion(restCountriesResponse.getRegion());
-                    bindCountryData.setPopulation(String.format(Locale.getDefault() ,"%.2fM", restCountriesResponse.getPopulation()/ 1000000.0));
-                    bindCountryData.setArea(String.format(Locale.getDefault() ,"%.2fM Km2", restCountriesResponse.getArea()/ 100000.0));
-                    bindCountryData.setCurrency(currencies);
-                    bindCountryData.setBorders(restCountriesResponse.getBorders());
+                    activity.updateBindingData(newBindCountryData);
+//                    activity.borderAdapterDataChanged(newBindCountryData.getBorders());
 
-                    ((MapsActivity)context).borderAdapterDataChanged(bindCountryData.getBorders());
-
-                    ((MapsActivity)context).hideInfoView();
+                    activity.hideInfoView();
 
                 }
             }
@@ -214,9 +224,14 @@ class MapManager extends AsyncTask<Void , Void , List<CountryInfo>>
     //parse countryborder
     @Override
     protected List<CountryInfo> doInBackground(Void... voids) {
+        MapsActivity activity = activityWeakReference.get();
+        if (activity == null || activity.isFinishing())
+            return null;
+
+
         List<CountryInfo> countries = new ArrayList<>();
 
-        String json = StreamUtils.InputStreamToString(context.getResources().openRawResource(R.raw.countriesgeo));
+        String json = StreamUtils.InputStreamToString(activity.getResources().openRawResource(R.raw.countriesgeo));
         GeoJsonInfo geoJsonInfo = new Gson().fromJson(json, GeoJsonInfo.class);
 
         if (geoJsonInfo != null && geoJsonInfo.getFeatures() != null) {
@@ -231,8 +246,12 @@ class MapManager extends AsyncTask<Void , Void , List<CountryInfo>>
     protected void onPostExecute(final List<CountryInfo> countryInfos) {
         super.onPostExecute(countryInfos);
 
+        MapsActivity activity = activityWeakReference.get();
+        if (activity == null || activity.isFinishing())
+            return;
+
         this.countries = countryInfos;
-        ((MapsActivity)context).hideProgressDialog();
+        activity.hideProgressDialog();
         refreshMapView();
     }
 

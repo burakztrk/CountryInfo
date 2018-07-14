@@ -85,7 +85,7 @@ public class BorderAdapter extends RecyclerView.Adapter<BorderAdapter.ViewHolder
         return mCountriesCode.size();
     }
 
-    // stores and recycles views as they are scrolled off screen
+
     public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
         ImageView countryFlagImage;
         TextView countryNameTextview;
